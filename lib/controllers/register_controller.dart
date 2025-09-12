@@ -1,4 +1,3 @@
-// ============= register_controller.dart =============
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../routes/app_routes.dart';
@@ -55,8 +54,8 @@ class RegisterController extends GetxController {
       name: nameController.text.trim(),
       email: emailController.text.trim(),
       phone: phoneController.text.trim(),
-      employeeId: employeeIdController.text.trim().isEmpty 
-          ? 'EMP${DateTime.now().millisecondsSinceEpoch}' 
+      employeeId: employeeIdController.text.trim().isEmpty
+          ? 'EMP${DateTime.now().millisecondsSinceEpoch}'
           : employeeIdController.text.trim(),
       password: passwordController.text,
       role: selectedRole.value,
@@ -66,22 +65,22 @@ class RegisterController extends GetxController {
     if (success) {
       Get.snackbar(
         'Success',
-        'Registration successful! Welcome ${nameController.text.trim()}',
+        'Registration successful! Please login with your credentials.',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.green,
         colorText: Colors.white,
+        duration: Duration(seconds: 3),
       );
       
-      // Navigate to role-based dashboard
-      final route = authController.getDashboardRouteForRole(selectedRole.value);
-      Get.offAllNamed(route);
+      // Navigate to login page instead of dashboard
+      Get.offAllNamed(AppRoutes.LOGIN);
     }
 
     isLoading.value = false;
   }
 
   void goToLogin() => Get.back();
-  
+
   // Validators
   String? validateName(String? value) {
     if (value == null || value.isEmpty) return 'Name is required';

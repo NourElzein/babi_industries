@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controllers/login_controller.dart';
+import '../../controllers/auth_controller.dart';
 import '../../routes/app_routes.dart';
 
-class LoginView extends GetView<LoginController> {
-  LoginView({Key? key}) : super(key: key);
+class LoginView extends StatefulWidget {
+  const LoginView({Key? key}) : super(key: key);
+
+  @override
+  State<LoginView> createState() => _LoginViewState();
+}
+
+class _LoginViewState extends State<LoginView> {
+  // Local controllers managed by the StatefulWidget
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  
+  bool _isPasswordVisible = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +149,7 @@ class LoginView extends GetView<LoginController> {
 
   Widget _buildLoginForm(bool isSmallScreen) {
     return Form(
-      key: controller.formKey,
+      key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -162,9 +182,13 @@ class LoginView extends GetView<LoginController> {
 
   Widget _buildEmailField() {
     return TextFormField(
-      controller: controller.emailController,
+      controller: _emailController,
       keyboardType: TextInputType.emailAddress,
-      validator: controller.validateEmail,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Email is required';
+        if (!GetUtils.isEmail(value)) return 'Please enter a valid email';
+        return null;
+      },
       decoration: InputDecoration(
         hintText: 'Enter your email',
         hintStyle: TextStyle(color: Colors.grey[400]),
@@ -188,22 +212,28 @@ class LoginView extends GetView<LoginController> {
   }
 
   Widget _buildPasswordField() {
-    return Obx(() => TextFormField(
-      controller: controller.passwordController,
-      obscureText: !controller.isPasswordVisible.value,
-      validator: controller.validatePassword,
+    return TextFormField(
+      controller: _passwordController,
+      obscureText: !_isPasswordVisible,
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'Password is required';
+        if (value.length < 6) return 'Password must be at least 6 characters';
+        return null;
+      },
       decoration: InputDecoration(
         hintText: 'Enter your password',
         hintStyle: TextStyle(color: Colors.grey[400]),
         prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
         suffixIcon: IconButton(
           icon: Icon(
-            controller.isPasswordVisible.value
-                ? Icons.visibility
-                : Icons.visibility_off,
+            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
             color: Colors.grey[600],
           ),
-          onPressed: controller.togglePasswordVisibility,
+          onPressed: () {
+            setState(() {
+              _isPasswordVisible = !_isPasswordVisible;
+            });
+          },
         ),
         filled: true,
         fillColor: Colors.grey[50],
@@ -220,14 +250,20 @@ class LoginView extends GetView<LoginController> {
           borderSide: const BorderSide(color: Colors.red, width: 1),
         ),
       ),
-    ));
+    );
   }
 
   Widget _buildForgotPassword() {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: controller.forgotPassword,
+        onPressed: () {
+          Get.snackbar(
+            'Info',
+            'Password reset functionality will be implemented soon.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        },
         child: const Text(
           'Forgot Password?',
           style: TextStyle(
@@ -240,11 +276,11 @@ class LoginView extends GetView<LoginController> {
   }
 
   Widget _buildLoginButton() {
-    return Obx(() => SizedBox(
+    return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: controller.isLoading.value ? null : controller.login,
+        onPressed: _isLoading ? null : _login,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF3B82F6),
           shape: RoundedRectangleBorder(
@@ -252,7 +288,7 @@ class LoginView extends GetView<LoginController> {
           ),
           elevation: 0,
         ),
-        child: controller.isLoading.value
+        child: _isLoading
             ? const SizedBox(
                 width: 24,
                 height: 24,
@@ -270,7 +306,78 @@ class LoginView extends GetView<LoginController> {
                 ),
               ),
       ),
-    ));
+    );
+  }
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authController = Get.find<AuthController>();
+      final success = await authController.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (mounted) {
+        if (success) {
+          Get.snackbar(
+            'Success',
+            'Login successful! Welcome back ${authController.currentUser.value?.name}',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+          );
+
+          final role = authController.currentUser.value?.role ?? '';
+          final route = _getDashboardRouteForRole(role);
+          Get.offAllNamed(route);
+        } else {
+          Get.snackbar(
+            'Error',
+            'Invalid credentials. Please try again.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Get.snackbar(
+          'Error',
+          'Login failed. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _getDashboardRouteForRole(String role) {
+    switch (role) {
+      case 'Supply Chain Manager':
+        return AppRoutes.DASHBOARD_MANAGER;
+      case 'Buyer':
+        return AppRoutes.DASHBOARD_BUYER;
+      case 'Warehouse Manager':
+        return AppRoutes.DASHBOARD_WAREHOUSE;
+      case 'Logistics Coordinator':
+        return AppRoutes.DASHBOARD_LOGISTICS;
+      default:
+        return AppRoutes.HOME;
+    }
   }
 
   Widget _buildSocialLogin() {
@@ -352,7 +459,7 @@ class LoginView extends GetView<LoginController> {
           style: TextStyle(color: Colors.grey[600]),
         ),
         TextButton(
-          onPressed: controller.goToRegister,
+          onPressed: () => Get.toNamed(AppRoutes.REGISTER),
           child: const Text(
             'Register Now',
             style: TextStyle(

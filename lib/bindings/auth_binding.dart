@@ -1,20 +1,10 @@
 import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
-import '../controllers/login_controller.dart';
-import '../controllers/register_controller.dart';
 
 class AuthBinding extends Bindings {
   @override
   void dependencies() {
-    Get.lazyPut<AuthController>(
-      () => AuthController(),
-      fenix: true,
-    );
-    Get.lazyPut<LoginController>(
-      () => LoginController(),
-    );
-    Get.lazyPut<RegisterController>(
-      () => RegisterController(),
-    );
+    // Only manage AuthController - let StatefulWidgets manage their own TextControllers
+    Get.put<AuthController>(AuthController(), permanent: true);
   }
 }

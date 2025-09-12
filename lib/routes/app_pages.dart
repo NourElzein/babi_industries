@@ -1,3 +1,4 @@
+import 'package:babi_industries/controllers/auth_controller.dart';
 import 'package:get/get.dart';
 import 'app_routes.dart';
 import '../views/auth/login_view.dart';
@@ -13,17 +14,23 @@ class AppPages {
   AppPages._();
 
   static final routes = [
-    // Auth routes
+    // Auth routes - LoginView now doesn't need LoginController binding
     GetPage(
       name: AppRoutes.LOGIN,
-      page: () => LoginView(),
-      binding: AuthBinding(),
+      page: () => const LoginView(),
+      binding: BindingsBuilder(() {
+        // Only bind AuthController, not LoginController
+        Get.put<AuthController>(AuthController(), permanent: true);
+      }),
       transition: Transition.fadeIn,
     ),
     GetPage(
       name: AppRoutes.REGISTER,
-      page: () => RegisterView(),
-      binding: AuthBinding(),
+      page: () => const RegisterView(),
+      binding: BindingsBuilder(() {
+        // Only bind AuthController for registration
+        Get.put<AuthController>(AuthController(), permanent: true);
+      }),
       transition: Transition.rightToLeft,
     ),
 

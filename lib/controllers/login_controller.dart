@@ -6,65 +6,104 @@ import 'auth_controller.dart';
 class LoginController extends GetxController {
   final AuthController authController = Get.find();
 
-  // Keep controllers alive with the controller
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  final formKey = GlobalKey<FormState>();
+  // Use late initialization to prevent disposal issues
+  late final TextEditingController emailController;
+  late final TextEditingController passwordController;
+  late final GlobalKey<FormState> formKey;
 
   var isPasswordVisible = false.obs;
   var isLoading = false.obs;
 
+  // Track if controller is disposed
+  bool _isDisposed = false;
+
+  @override
+  void onInit() {
+    super.onInit();
+    // Initialize controllers fresh each time
+    emailController = TextEditingController();
+    passwordController = TextEditingController();
+    formKey = GlobalKey<FormState>();
+    _isDisposed = false;
+  }
+
   @override
   void onClose() {
-    // Only dispose if you are sure the controller will not be used again
-    // Otherwise, use fenix:true in the binding to automatically recreate
-    emailController.dispose();
-    passwordController.dispose();
+    _isDisposed = true;
+    // Safely dispose controllers
+    try {
+      emailController.dispose();
+      passwordController.dispose();
+    } catch (e) {
+      // Ignore disposal errors
+    }
     super.onClose();
   }
 
-  void togglePasswordVisibility() =>
-      isPasswordVisible.value = !isPasswordVisible.value;
+  void togglePasswordVisibility() {
+    if (_isDisposed) return;
+    isPasswordVisible.value = !isPasswordVisible.value;
+  }
 
   Future<void> login() async {
+    if (_isDisposed) return;
     if (!formKey.currentState!.validate()) return;
 
     isLoading.value = true;
 
-    final success = await authController.login(
-      emailController.text.trim(),
-      passwordController.text,
-    );
-
-    if (success) {
-      Get.snackbar(
-        'Success',
-        'Login successful! Welcome back ${authController.currentUser.value?.name}',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
+    try {
+      final success = await authController.login(
+        emailController.text.trim(),
+        passwordController.text,
       );
 
-      // Navigate to role-based dashboard
-      final role = authController.currentUser.value?.role ?? '';
-      final route = getDashboardRouteForRole(role);
-      Get.offAllNamed(route);
-    } else {
-      Get.snackbar(
-        'Error',
-        'Invalid credentials. Please try again.',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      if (_isDisposed) return; // Check if disposed during async operation
+
+      if (success) {
+        Get.snackbar(
+          'Success',
+          'Login successful! Welcome back ${authController.currentUser.value?.name}',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+        );
+
+        final role = authController.currentUser.value?.role ?? '';
+        final route = getDashboardRouteForRole(role);
+        Get.offAllNamed(route);
+      } else {
+        Get.snackbar(
+          'Error',
+          'Invalid credentials. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      if (!_isDisposed) {
+        Get.snackbar(
+          'Error',
+          'Login failed. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+      }
+    } finally {
+      if (!_isDisposed) {
+        isLoading.value = false;
+      }
     }
-
-    isLoading.value = false;
   }
 
-  void goToRegister() => Get.toNamed(AppRoutes.REGISTER);
+  void goToRegister() {
+    if (_isDisposed) return;
+    Get.toNamed(AppRoutes.REGISTER);
+  }
 
   void forgotPassword() {
+    if (_isDisposed) return;
     Get.snackbar(
       'Info',
       'Password reset functionality will be implemented soon.',
@@ -72,7 +111,6 @@ class LoginController extends GetxController {
     );
   }
 
-  // Validators
   String? validateEmail(String? value) {
     if (value == null || value.isEmpty) return 'Email is required';
     if (!GetUtils.isEmail(value)) return 'Please enter a valid email';
@@ -85,7 +123,6 @@ class LoginController extends GetxController {
     return null;
   }
 
-  // Role-based dashboard routing
   String getDashboardRouteForRole(String role) {
     switch (role) {
       case 'Supply Chain Manager':

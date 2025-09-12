@@ -669,15 +669,15 @@ void _registerUser() async {
       if (success) {
         Get.snackbar(
           'Success', 
-          'Registration successful!',
+          'Registration successful! Please login with your credentials.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.green,
           colorText: Colors.white,
+          duration: Duration(seconds: 3),
         );
         
-        // Navigate to role-based dashboard
-        final route = AuthController.instance.getDashboardRouteForRole(roleName);
-        Get.offAllNamed(route);
+        // Navigate to login page instead of dashboard
+        Get.offAllNamed(AppRoutes.LOGIN);
       }
     } catch (e) {
       Get.snackbar(
@@ -701,8 +701,7 @@ void _registerUser() async {
       colorText: Colors.white,
     );
   }
-}
-  Widget _buildBackgroundPattern() {
+}  Widget _buildBackgroundPattern() {
     return Positioned.fill(
       child: Opacity(
         opacity: 0.05,
