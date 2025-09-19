@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'app_routes.dart';
 import '../views/auth/login_view.dart';
 import '../views/auth/register_view.dart';
-import '../views/home/home_view.dart';
 import '../views/dashboard/manager_dashboard_view.dart';
 import '../views/dashboard/buyer_dashboard_view.dart';
 import '../views/dashboard/warehouse_dashboard_view.dart';
@@ -34,13 +33,6 @@ class AppPages {
       transition: Transition.rightToLeft,
     ),
 
-    // Home
-    GetPage(
-      name: AppRoutes.HOME,
-      page: () => HomeView(),
-      binding: AuthBinding(),
-      transition: Transition.fadeIn,
-    ),
 
     // Dashboards by role
     GetPage(

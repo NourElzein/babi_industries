@@ -5,6 +5,7 @@ class UserModel {
   final String role;
   final String company;
   final String? profileImage;
+  final String? token; // ✅ Added token field
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
 
@@ -15,6 +16,7 @@ class UserModel {
     required this.role,
     required this.company,
     this.profileImage,
+    this.token, // ✅ Include token in constructor
     this.createdAt,
     this.lastLoginAt,
   });
@@ -27,6 +29,7 @@ class UserModel {
       role: json['role'],
       company: json['company'],
       profileImage: json['profile_image'],
+      token: json['token'], // ✅ Map token from API response
       createdAt: json['created_at'] != null 
           ? DateTime.parse(json['created_at']) 
           : null,
@@ -44,6 +47,7 @@ class UserModel {
       'role': role,
       'company': company,
       'profile_image': profileImage,
+      'token': token, // ✅ Include token in JSON
       'created_at': createdAt?.toIso8601String(),
       'last_login_at': lastLoginAt?.toIso8601String(),
     };
@@ -56,6 +60,7 @@ class UserModel {
     String? role,
     String? company,
     String? profileImage,
+    String? token, // ✅ Add token here
     DateTime? createdAt,
     DateTime? lastLoginAt,
   }) {
@@ -66,6 +71,7 @@ class UserModel {
       role: role ?? this.role,
       company: company ?? this.company,
       profileImage: profileImage ?? this.profileImage,
+      token: token ?? this.token, // ✅ Copy token
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
     );
