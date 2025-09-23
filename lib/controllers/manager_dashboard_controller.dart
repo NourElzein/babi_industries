@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../services/api_service.dart';
 import '../controllers/auth_controller.dart';
 
@@ -22,15 +23,18 @@ class ForecastItem {
 }
 
 class ManagerDashboardController extends GetxController {
-  var suppliers = [].obs;
-  var orders = [].obs;
-  var alerts = [].obs;
-  var activities = [].obs;
+  // Observables
+  var suppliers = <Map<String, dynamic>>[].obs;
+  var orders = <Map<String, dynamic>>[].obs;
+  var alerts = <Map<String, dynamic>>[].obs;
+  var activities = <Map<String, dynamic>>[].obs;
+  var notifications = <Map<String, dynamic>>[].obs;
+  var forecastData = <ForecastItem>[].obs;
 
   var isLoading = false.obs;
   var errorMessage = ''.obs;
-
-  final AuthController authController = Get.find<AuthController>();
+  var isLoadingForecast = false.obs;
+  var selectedIndex = 0.obs;
 
   // KPI values
   var totalSuppliers = 0.obs;
@@ -66,23 +70,73 @@ class ManagerDashboardController extends GetxController {
   var monthlyValueTrend = ''.obs;
   var onTimeDeliveryTrend = ''.obs;
 
-  var notifications = <Map<String, dynamic>>[].obs;
+  // Hive box for offline storage
+  late Box managerBox;
 
-  var forecastData = <ForecastItem>[].obs;
-  var isLoadingForecast = false.obs;
-
-  var selectedIndex = 0.obs;
+  final AuthController authController = Get.find<AuthController>();
 
   @override
   void onInit() {
     super.onInit();
-    fetchDashboardData();
+    _initializeController();
   }
 
+  /// Initialize Hive and fetch dashboard data
+  Future<void> _initializeController() async {
+    try {
+      isLoading.value = true;
+
+      // Initialize Hive
+      await Hive.initFlutter();
+      managerBox = await Hive.openBox('managerBox');
+
+      // Load cached data
+      _loadCachedData();
+
+      // Fetch latest data from API
+      await fetchDashboardData();
+    } catch (e) {
+      errorMessage.value = 'Initialization error: $e';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Load cached data from Hive safely
+  void _loadCachedData() {
+    totalSuppliers.value = managerBox.get('totalSuppliers', defaultValue: 0);
+    activeOrders.value = managerBox.get('activeOrders', defaultValue: 0);
+    pendingOrders.value = managerBox.get('pendingOrders', defaultValue: 0);
+    delayedOrders.value = managerBox.get('delayedOrders', defaultValue: 0);
+    lowStockItems.value = managerBox.get('lowStockItems', defaultValue: 0);
+    criticalAlerts.value = managerBox.get('criticalAlerts', defaultValue: 0);
+    stockHealth.value = managerBox.get('stockHealth', defaultValue: 'N/A');
+    monthlyOrderValue.value = managerBox.get('monthlyOrderValue', defaultValue: 'XOF 0');
+    supplierPerformanceScore.value =
+        managerBox.get('supplierPerformanceScore', defaultValue: '0%');
+    onTimeDeliveryRate.value = managerBox.get('onTimeDeliveryRate', defaultValue: '0%');
+    inventoryTurnover.value = managerBox.get('inventoryTurnover', defaultValue: '0x');
+
+    suppliers.value = ((managerBox.get('suppliers', defaultValue: []) as List)
+            .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+            .toList());
+    orders.value = ((managerBox.get('orders', defaultValue: []) as List)
+            .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+            .toList());
+    alerts.value = ((managerBox.get('alerts', defaultValue: []) as List)
+            .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+            .toList());
+    notifications.value = ((managerBox.get('notifications', defaultValue: []) as List)
+            .map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{})
+            .toList());
+  }
+
+  /// Fetch dashboard data from API
   Future<void> fetchDashboardData() async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
+
       final token = authController.currentUser.value?.token ?? '';
 
       await Future.wait([
@@ -94,13 +148,36 @@ class ManagerDashboardController extends GetxController {
         fetchNotifications(token),
         fetchForecastData(token),
       ]);
+
+      // Save offline
+      await _cacheData();
     } catch (e) {
-      errorMessage.value = e.toString();
+      errorMessage.value = 'Data fetch error: $e';
     } finally {
       isLoading.value = false;
     }
   }
 
+  /// Save current data to Hive
+  Future<void> _cacheData() async {
+    await managerBox.put('totalSuppliers', totalSuppliers.value);
+    await managerBox.put('activeOrders', activeOrders.value);
+    await managerBox.put('pendingOrders', pendingOrders.value);
+    await managerBox.put('delayedOrders', delayedOrders.value);
+    await managerBox.put('lowStockItems', lowStockItems.value);
+    await managerBox.put('criticalAlerts', criticalAlerts.value);
+    await managerBox.put('stockHealth', stockHealth.value);
+    await managerBox.put('monthlyOrderValue', monthlyOrderValue.value);
+    await managerBox.put('supplierPerformanceScore', supplierPerformanceScore.value);
+    await managerBox.put('onTimeDeliveryRate', onTimeDeliveryRate.value);
+    await managerBox.put('inventoryTurnover', inventoryTurnover.value);
+    await managerBox.put('suppliers', suppliers.value);
+    await managerBox.put('orders', orders.value);
+    await managerBox.put('alerts', alerts.value);
+    await managerBox.put('notifications', notifications.value);
+  }
+
+  // ------------------ API calls ------------------
   Future<void> fetchKpis(String token) async {
     try {
       final kpis = await ApiService.fetchKpis(token);
@@ -141,27 +218,30 @@ class ManagerDashboardController extends GetxController {
   }
 
   Future<void> fetchSuppliers(String token) async {
-    suppliers.value = await ApiService.fetchSuppliers(token);
+    final response = await ApiService.fetchSuppliers(token);
+    suppliers.value = response.map<Map<String, dynamic>>((item) => Map<String, dynamic>.from(item)).toList();
   }
 
   Future<void> fetchOrders(String token) async {
-    orders.value = await ApiService.fetchOrders(token);
+    final response = await ApiService.fetchOrders(token);
+    orders.value = response.map<Map<String, dynamic>>((item) => Map<String, dynamic>.from(item)).toList();
   }
 
   Future<void> fetchAlerts(String token) async {
-    alerts.value = await ApiService.fetchAlerts(token);
+    final response = await ApiService.fetchAlerts(token);
+    alerts.value = response.map<Map<String, dynamic>>((item) => Map<String, dynamic>.from(item)).toList();
   }
 
   Future<void> fetchActivities(String token) async {
-    activities.value = await ApiService.fetchActivities(token);
+    final response = await ApiService.fetchActivities(token);
+    activities.value = response.map<Map<String, dynamic>>((item) => Map<String, dynamic>.from(item)).toList();
   }
 
   Future<void> fetchNotifications(String token) async {
-    notifications.value =
-        (await ApiService.fetchNotifications(token)).cast<Map<String, dynamic>>();
+    final response = await ApiService.fetchNotifications(token);
+    notifications.value = response.map<Map<String, dynamic>>((item) => Map<String, dynamic>.from(item)).toList();
   }
 
-  /// --- CLEANED FORECAST FETCH ---
   Future<void> fetchForecastData(String token) async {
     try {
       isLoadingForecast.value = true;
@@ -170,22 +250,19 @@ class ManagerDashboardController extends GetxController {
       final List<dynamic> items = forecastResponse['forecast_items'] ?? [];
 
       forecastData.value = items.map((item) {
+        final mapItem = Map<String, dynamic>.from(item);
         return ForecastItem(
-          title: item['title'] ?? 'Untitled',
-          description: item['description'] ?? '',
-          icon: _mapIcon(item['icon']),
-          color: _mapColor(item['color']),
-          timeframe: item['timeframe'] ?? '',
-          onTap: () => Get.snackbar(item['title'], item['description']),
+          title: mapItem['title'] ?? 'Untitled',
+          description: mapItem['description'] ?? '',
+          icon: _mapIcon(mapItem['icon']),
+          color: _mapColor(mapItem['color']),
+          timeframe: mapItem['timeframe'] ?? '',
+          onTap: () => Get.snackbar(mapItem['title'], mapItem['description']),
         );
       }).toList();
-
-      if (forecastData.isEmpty) {
-        print("No forecast items returned from API.");
-      }
     } catch (e) {
       print('Error fetching forecast: $e');
-      forecastData.clear(); // clear stale data if error
+      forecastData.clear();
     } finally {
       isLoadingForecast.value = false;
     }
@@ -221,9 +298,10 @@ class ManagerDashboardController extends GetxController {
     }
   }
 
+  // ------------------ Utility ------------------
   void refreshData() => fetchDashboardData();
 
-  // Navigation
+  // ------------------ Navigation ------------------
   void navigateToSupplierManagement() => Get.toNamed('/suppliers');
   void navigateToOrderManagement() => Get.toNamed('/orders');
   void navigateToInventoryManagement() => Get.toNamed('/inventory');

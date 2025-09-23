@@ -15,8 +15,6 @@ class _RegisterViewState extends State<RegisterView>
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _employeeIdController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -101,8 +99,6 @@ class _RegisterViewState extends State<RegisterView>
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
-    _employeeIdController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _animationController.dispose();
@@ -292,14 +288,7 @@ class _RegisterViewState extends State<RegisterView>
             const SizedBox(height: 8),
             _buildEmailField(isSmallScreen),
             const SizedBox(height: 16),
-            _buildInputLabel('Phone Number'),
-            const SizedBox(height: 8),
-            _buildPhoneField(isSmallScreen),
-            const SizedBox(height: 16),
-            _buildInputLabel('Employee ID (Optional)'),
-            const SizedBox(height: 8),
-            _buildEmployeeIdField(isSmallScreen),
-            const SizedBox(height: 20),
+            
             _buildRoleSelectionResponsive(isSmallScreen),
             const SizedBox(height: 20),
             _buildInputLabel('Password'),
@@ -321,12 +310,7 @@ class _RegisterViewState extends State<RegisterView>
     );
   }
 
-  Widget _buildEmployeeIdField(bool isSmallScreen) {
-    return TextFormField(
-      controller: _employeeIdController,
-      decoration: _inputDecoration('Enter Employee ID'),
-    );
-  }
+
 
   Widget _buildRoleSelectionResponsive(bool isSmallScreen) {
     return Column(
@@ -483,43 +467,42 @@ class _RegisterViewState extends State<RegisterView>
   }
 
   Widget _buildEmailField(bool isSmallScreen) {
-    return TextFormField(
-      controller: _emailController,
-      decoration: _inputDecoration('Enter email address'),
-      keyboardType: TextInputType.emailAddress,
-      validator: (value) => value!.isEmpty ? 'Email cannot be empty' : null,
-    );
-  }
+  return TextFormField(
+    controller: _emailController,
+    decoration: _inputDecoration('Enter email address'),
+    keyboardType: TextInputType.emailAddress,
+    validator: (value) {
+      if (value == null || value.isEmpty) return 'Email cannot be empty';
+      if (!value.contains('@gmail.com')) return 'Email must be a Gmail address';
+      return null;
+    },
+  );
+}
 
-  Widget _buildPhoneField(bool isSmallScreen) {
-    return TextFormField(
-      controller: _phoneController,
-      decoration: _inputDecoration('Enter phone number'),
-      keyboardType: TextInputType.phone,
-      validator: (value) =>
-          value!.isEmpty ? 'Phone number cannot be empty' : null,
-    );
-  }
+
+ 
 
   Widget _buildPasswordField(bool isSmallScreen) {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: !_isPasswordVisible,
-      decoration: _inputDecoration('Enter password').copyWith(
-        suffixIcon: IconButton(
-          icon: Icon(
-              _isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-          onPressed: () {
-            setState(() {
-              _isPasswordVisible = !_isPasswordVisible;
-            });
-          },
-        ),
+  return TextFormField(
+    controller: _passwordController,
+    obscureText: !_isPasswordVisible,
+    decoration: _inputDecoration('Enter password').copyWith(
+      suffixIcon: IconButton(
+        icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off),
+        onPressed: () {
+          setState(() {
+            _isPasswordVisible = !_isPasswordVisible;
+          });
+        },
       ),
-      validator: (value) =>
-          value!.isEmpty ? 'Password cannot be empty' : null,
-    );
-  }
+    ),
+    validator: (value) {
+      if (value == null || value.isEmpty) return 'Password cannot be empty';
+      if (value.length < 6) return 'Password must be longer than 6 characters';
+      return null;
+    },
+  );
+}
 
   Widget _buildConfirmPasswordField(bool isSmallScreen) {
     return TextFormField(
@@ -657,10 +640,6 @@ void _registerUser() async {
       final success = await AuthController.instance.registerUser(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
-        employeeId: _employeeIdController.text.trim().isEmpty 
-            ? 'EMP${DateTime.now().millisecondsSinceEpoch}'
-            : _employeeIdController.text.trim(),
         password: _passwordController.text.trim(),
         role: roleName,
         company: 'Babi Industries',
@@ -705,9 +684,8 @@ void _registerUser() async {
     return Positioned.fill(
       child: Opacity(
         opacity: 0.05,
-        child: Image.asset(
-          'assets/images/pattern.png',
-          fit: BoxFit.cover,
+        child: Container(
+          color: Colors.black,
         ),
       ),
     );

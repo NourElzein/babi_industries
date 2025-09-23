@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Color;
 import 'package:get/get.dart';
 import 'package:babi_industries/controllers/auth_controller.dart';
 
@@ -6,6 +7,7 @@ class LogisticsDashboardController extends GetxController {
 
   // Observable variables
   var isLoading = true.obs;
+  var isLoadingShipments = false.obs;
   var errorMessage = ''.obs;
   var selectedIndex = 0.obs;
   
@@ -86,7 +88,48 @@ class LogisticsDashboardController extends GetxController {
           'driver': 'Jane Smith',
           'vehicle': 'Van-205'
         },
-        // Add more mock data as needed
+        {
+          'id': 'SHP-003',
+          'shipment_id': 'SHP-003',
+          'customer': 'Tech Solutions Inc',
+          'origin': 'Distribution Center',
+          'destination': 'Office Complex',
+          'status': 'delayed',
+          'priority': 'urgent',
+          'gps_enabled': true,
+          'progress': 30,
+          'estimated_delivery': '2023-12-15 16:00',
+          'driver': 'Mike Wilson',
+          'vehicle': 'Truck-108'
+        },
+        {
+          'id': 'SHP-004',
+          'shipment_id': 'SHP-004',
+          'customer': 'Retail Chain',
+          'origin': 'Factory',
+          'destination': 'Store Network',
+          'status': 'out_for_delivery',
+          'priority': 'medium',
+          'gps_enabled': true,
+          'progress': 85,
+          'estimated_delivery': '2023-12-15 12:00',
+          'driver': 'Sarah Johnson',
+          'vehicle': 'Van-301'
+        },
+        {
+          'id': 'SHP-005',
+          'shipment_id': 'SHP-005',
+          'customer': 'Medical Supplies Co',
+          'origin': 'Pharmacy Warehouse',
+          'destination': 'Hospital',
+          'status': 'delivered',
+          'priority': 'high',
+          'gps_enabled': false,
+          'progress': 100,
+          'estimated_delivery': '2023-12-15 09:00',
+          'driver': 'David Brown',
+          'vehicle': 'Truck-205'
+        },
       ]);
       
       // Mock notifications
@@ -108,6 +151,31 @@ class LogisticsDashboardController extends GetxController {
           'time': '09:15 AM',
           'action_required': false
         },
+        {
+          'title': 'Route Optimized',
+          'message': 'Route A-12 has been optimized, saving 15 minutes',
+          'type': 'route',
+          'priority': 'low',
+          'time': '08:45 AM',
+          'action_required': false
+        },
+        {
+          'title': 'Driver Check-in',
+          'message': 'Driver John Doe checked in at checkpoint B',
+          'type': 'arrival',
+          'priority': 'low',
+          'time': '08:15 AM',
+          'action_required': false
+        },
+        {
+          'title': 'Emergency Delivery',
+          'message': 'Urgent medical supplies delivery requested',
+          'type': 'issue',
+          'priority': 'critical',
+          'time': '07:30 AM',
+          'action_required': true,
+          'shipment_id': 'SHP-006'
+        },
       ]);
       
       // Mock live tracking data
@@ -116,13 +184,19 @@ class LogisticsDashboardController extends GetxController {
           'id': 'SHP-001',
           'speed': '65 km/h',
           'heading': 'North-East',
-          'location': 'Lat: 40.7128, Long: -74.0060'
+          'location': 'Highway A1, Exit 15',
         },
         {
           'id': 'SHP-004',
-          'speed': '55 km/h',
+          'speed': '45 km/h',
           'heading': 'South',
-          'location': 'Lat: 34.0522, Long: -118.2437'
+          'location': 'City Center, Main St',
+        },
+        {
+          'id': 'SHP-003',
+          'speed': '0 km/h',
+          'heading': 'Stationary',
+          'location': 'Rest Stop, Mile 23',
         },
       ]);
       
@@ -130,7 +204,7 @@ class LogisticsDashboardController extends GetxController {
       recentActivities([
         {
           'title': 'New Shipment Created',
-          'description': 'Shipment SHP-005 created for DEF Company',
+          'description': 'Shipment SHP-007 created for DEF Company',
           'type': 'shipment_created',
           'time': '11:45 AM'
         },
@@ -142,9 +216,27 @@ class LogisticsDashboardController extends GetxController {
         },
         {
           'title': 'Delivery Completed',
-          'description': 'Shipment SHP-006 delivered successfully',
+          'description': 'Shipment SHP-005 delivered successfully to Medical Supplies Co',
           'type': 'delivery_completed',
           'time': '09:30 AM'
+        },
+        {
+          'title': 'Route Optimization',
+          'description': 'Route A-12 optimized for better efficiency',
+          'type': 'route_optimized',
+          'time': '08:45 AM'
+        },
+        {
+          'title': 'Pickup Scheduled',
+          'description': 'Pickup scheduled for new order from Tech Solutions Inc',
+          'type': 'pickup_scheduled',
+          'time': '08:00 AM'
+        },
+        {
+          'title': 'Driver Assignment',
+          'description': 'Driver Mike Wilson assigned to SHP-003',
+          'type': 'shipment_updated',
+          'time': '07:30 AM'
         },
       ]);
       
@@ -164,6 +256,7 @@ class LogisticsDashboardController extends GetxController {
     selectedIndex(index);
   }
 
+  // Navigation methods
   void navigateToShipmentManagement() {
     Get.toNamed('/shipments');
   }
@@ -176,29 +269,243 @@ class LogisticsDashboardController extends GetxController {
     Get.toNamed('/route-optimization');
   }
 
-  void trackShipment(String shipmentId) {
-    Get.toNamed('/track-shipment/$shipmentId');
+  void trackShipment(String? shipmentId) {
+    if (shipmentId != null) {
+      Get.toNamed('/track-shipment/$shipmentId');
+    }
   }
 
-  // Additional methods for handling specific actions
-  void acknowledgeAlert(int alertId) {
-    // Handle alert acknowledgement
-    criticalAlerts(criticalAlerts.value - 1);
+  // Search functionality
+  void searchShipments(String query) {
+    // Simulate search functionality
+    Get.snackbar(
+      'Search Results',
+      'Searching for: $query',
+      duration: const Duration(seconds: 2),
+    );
+    // In a real app, this would filter the shipments list
+    // You could implement actual search logic here
   }
 
+  // Shipment management methods
+  void createShipment(Map<String, dynamic> shipmentData) {
+    try {
+      // Simulate API call
+      final newShipment = {
+        'id': 'SHP-${DateTime.now().millisecondsSinceEpoch}',
+        'shipment_id': 'SHP-${DateTime.now().millisecondsSinceEpoch}',
+        'customer': shipmentData['customer'],
+        'origin': shipmentData['origin'],
+        'destination': shipmentData['destination'],
+        'status': 'pending',
+        'priority': shipmentData['priority'] ?? 'medium',
+        'gps_enabled': false,
+        'progress': 0,
+        'estimated_delivery': DateTime.now().add(const Duration(days: 2)).toString(),
+        'driver': 'Not Assigned',
+        'vehicle': 'Not Assigned'
+      };
+
+      // Add to shipments list
+      shipments.insert(0, newShipment);
+      activeShipments.value++;
+      pendingPickup.value++;
+
+      // Add to recent activities
+      recentActivities.insert(0, {
+        'title': 'New Shipment Created',
+        'description': 'Shipment ${newShipment['shipment_id']} created for ${shipmentData['customer']}',
+        'type': 'shipment_created',
+        'time': DateTime.now().toString().substring(11, 16)
+      });
+
+      Get.snackbar(
+        'Success',
+        'Shipment ${newShipment['shipment_id']} created successfully',
+        backgroundColor: const Color(0xFF4CAF50),
+        colorText: const Color(0xFFFFFFFF),
+      );
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to create shipment: ${e.toString()}',
+        backgroundColor: const Color(0xFFF44336),
+        colorText: const Color(0xFFFFFFFF),
+      );
+    }
+  }
+
+  // Alert management
+  void acknowledgeAlert(int alertIndex) {
+    if (alertIndex < notifications.length) {
+      notifications.removeAt(alertIndex);
+      if (criticalAlerts.value > 0) {
+        criticalAlerts.value--;
+      }
+      Get.snackbar('Alert Acknowledged', 'Alert has been marked as resolved');
+    }
+  }
+
+  void dismissAllAlerts() {
+    notifications.clear();
+    criticalAlerts(0);
+    Get.snackbar('All Alerts Dismissed', 'All alerts have been cleared');
+  }
+
+  // Status update methods
   void updateShipmentStatus(String shipmentId, String newStatus) {
-    // Handle status update
+    try {
+      final shipmentIndex = shipments.indexWhere((s) => s['id'] == shipmentId);
+      if (shipmentIndex != -1) {
+        shipments[shipmentIndex]['status'] = newStatus;
+        shipments.refresh();
+
+        // Update counters based on status change
+        _updateCountersForStatusChange(newStatus);
+
+        // Add to recent activities
+        recentActivities.insert(0, {
+          'title': 'Status Updated',
+          'description': 'Shipment $shipmentId status changed to $newStatus',
+          'type': 'status_changed',
+          'time': DateTime.now().toString().substring(11, 16)
+        });
+
+        Get.snackbar('Status Updated', 'Shipment $shipmentId is now $newStatus');
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update shipment status: ${e.toString()}');
+    }
   }
 
+  void _updateCountersForStatusChange(String newStatus) {
+    // This is a simplified counter update - in a real app, you'd recalculate from the actual data
+    switch (newStatus.toLowerCase()) {
+      case 'in_transit':
+        inTransit.value++;
+        break;
+      case 'delivered':
+        delivered.value++;
+        completedToday.value++;
+        break;
+      case 'delayed':
+        delayed.value++;
+        break;
+    }
+  }
+
+  // Driver and vehicle assignment
   void assignDriverToShipment(String shipmentId, String driverId) {
-    // Handle driver assignment
+    try {
+      final shipmentIndex = shipments.indexWhere((s) => s['id'] == shipmentId);
+      if (shipmentIndex != -1) {
+        shipments[shipmentIndex]['driver'] = driverId;
+        shipments.refresh();
+
+        recentActivities.insert(0, {
+          'title': 'Driver Assigned',
+          'description': 'Driver $driverId assigned to shipment $shipmentId',
+          'type': 'shipment_updated',
+          'time': DateTime.now().toString().substring(11, 16)
+        });
+
+        Get.snackbar('Driver Assigned', 'Driver $driverId assigned to shipment $shipmentId');
+      }
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to assign driver: ${e.toString()}');
+    }
   }
 
+  // Route optimization
   void optimizeRoute(String routeId) {
-    // Handle route optimization
+    try {
+      // Simulate route optimization
+      Get.snackbar('Route Optimization', 'Optimizing route $routeId...');
+      
+      Future.delayed(const Duration(seconds: 2), () {
+        recentActivities.insert(0, {
+          'title': 'Route Optimized',
+          'description': 'Route $routeId optimized successfully, saving 12 minutes',
+          'type': 'route_optimized',
+          'time': DateTime.now().toString().substring(11, 16)
+        });
+
+        Get.snackbar(
+          'Optimization Complete',
+          'Route $routeId optimized successfully',
+          backgroundColor: const Color(0xFF4CAF50),
+          colorText: const Color(0xFFFFFFFF),
+        );
+      });
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to optimize route: ${e.toString()}');
+    }
   }
 
-  void generateReport(DateTime startDate, DateTime endDate) {
-    // Handle report generation
+  // Report generation
+  void generateReport(DateTime? startDate, DateTime? endDate) {
+    try {
+      final start = startDate ?? DateTime.now().subtract(const Duration(days: 30));
+      final end = endDate ?? DateTime.now();
+      
+      Get.snackbar(
+        'Generating Report',
+        'Creating logistics report from ${start.toString().substring(0, 10)} to ${end.toString().substring(0, 10)}',
+      );
+
+      // Simulate report generation
+      Future.delayed(const Duration(seconds: 3), () {
+        Get.snackbar(
+          'Report Ready',
+          'Logistics report has been generated and sent to your email',
+          backgroundColor: const Color(0xFF4CAF50),
+          colorText: const Color(0xFFFFFFFF),
+        );
+      });
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to generate report: ${e.toString()}');
+    }
+  }
+
+  // Utility methods for data filtering and sorting
+  List getShipmentsByStatus(String status) {
+    return shipments.where((shipment) => shipment['status'] == status).toList();
+  }
+
+  List getShipmentsByPriority(String priority) {
+    return shipments.where((shipment) => shipment['priority'] == priority).toList();
+  }
+
+  List getDelayedShipments() {
+    return shipments.where((shipment) => shipment['status'] == 'delayed').toList();
+  }
+
+  List getCriticalNotifications() {
+    return notifications.where((notification) => 
+        notification['priority'] == 'high' || notification['priority'] == 'critical'
+    ).toList();
+  }
+
+  // Performance calculation methods
+  double calculateOnTimeDeliveryRate() {
+    if (shipments.isEmpty) return 0.0;
+    final deliveredShipments = getShipmentsByStatus('delivered');
+    final onTimeDeliveries = deliveredShipments.where((s) => s['on_time'] == true).length;
+    return (onTimeDeliveries / deliveredShipments.length) * 100;
+  }
+
+  void updatePerformanceMetrics() {
+    // Recalculate performance metrics based on current data
+    final onTimeRate = calculateOnTimeDeliveryRate();
+    onTimeDeliveryRate('${onTimeRate.toStringAsFixed(1)}%');
+    
+    // Update last refresh time
+    lastUpdate('Updated: ${DateTime.now().toString().substring(11, 16)}');
+  }
+
+  @override
+  void onClose() {
+    super.onClose();
+    // Clean up any resources if needed
   }
 }

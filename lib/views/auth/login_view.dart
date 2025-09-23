@@ -1,3 +1,4 @@
+import 'package:babi_industries/controllers/forgot_password_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
@@ -11,13 +12,12 @@ class LoginView extends StatefulWidget {
 }
 
 class _LoginViewState extends State<LoginView> {
-  // Local controllers managed by the StatefulWidget
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  
-  bool _isPasswordVisible = false;
-  bool _isLoading = false;
+
+  final _isPasswordVisible = false.obs;
+  final _isLoading = false.obs;
 
   @override
   void dispose() {
@@ -180,13 +180,16 @@ class _LoginViewState extends State<LoginView> {
     );
   }
 
+  // -------------------- EMAIL FIELD WITH STRONG VALIDATION --------------------
   Widget _buildEmailField() {
     return TextFormField(
       controller: _emailController,
       keyboardType: TextInputType.emailAddress,
       validator: (value) {
         if (value == null || value.isEmpty) return 'Email is required';
-        if (!GetUtils.isEmail(value)) return 'Please enter a valid email';
+        // Strong email regex validation
+        final regex = RegExp(r"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$");
+        if (!regex.hasMatch(value)) return 'Enter a valid email address';
         return null;
       },
       decoration: InputDecoration(
@@ -212,58 +215,50 @@ class _LoginViewState extends State<LoginView> {
   }
 
   Widget _buildPasswordField() {
-    return TextFormField(
-      controller: _passwordController,
-      obscureText: !_isPasswordVisible,
-      validator: (value) {
-        if (value == null || value.isEmpty) return 'Password is required';
-        if (value.length < 6) return 'Password must be at least 6 characters';
-        return null;
-      },
-      decoration: InputDecoration(
-        hintText: 'Enter your password',
-        hintStyle: TextStyle(color: Colors.grey[400]),
-        prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-            color: Colors.grey[600],
-          ),
-          onPressed: () {
-            setState(() {
-              _isPasswordVisible = !_isPasswordVisible;
-            });
+    return Obx(() => TextFormField(
+          controller: _passwordController,
+          obscureText: !_isPasswordVisible.value,
+          validator: (value) {
+            if (value == null || value.isEmpty) return 'Password is required';
+            if (value.length < 6) return 'Password must be at least 6 characters';
+            return null;
           },
-        ),
-        filled: true,
-        fillColor: Colors.grey[50],
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1),
-        ),
-      ),
-    );
+          decoration: InputDecoration(
+            hintText: 'Enter your password',
+            hintStyle: TextStyle(color: Colors.grey[400]),
+            prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isPasswordVisible.value ? Icons.visibility : Icons.visibility_off,
+                color: Colors.grey[600],
+              ),
+              onPressed: () {
+                _isPasswordVisible.value = !_isPasswordVisible.value;
+              },
+            ),
+            filled: true,
+            fillColor: Colors.grey[50],
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.red, width: 1),
+            ),
+          ),
+        ));
   }
 
   Widget _buildForgotPassword() {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: () {
-          Get.snackbar(
-            'Info',
-            'Password reset functionality will be implemented soon.',
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        },
+        onPressed: _showForgotPasswordDialog,
         child: const Text(
           'Forgot Password?',
           style: TextStyle(
@@ -274,47 +269,283 @@ class _LoginViewState extends State<LoginView> {
       ),
     );
   }
+    void _showForgotPasswordDialog() {
+    final forgotPasswordController = Get.find<ForgotPasswordController>();
+    final emailController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final isNewPasswordVisible = false.obs;
 
-  Widget _buildLoginButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _login,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF3B82F6),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    Get.defaultDialog(
+      title: 'Reset Password',
+      titleStyle: const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Color(0xFF1E40AF),
+      ),
+      content: Form(
+        key: formKey,
+        child: Obx(() => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Enter your email and new password to reset your account.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Email is required';
+                    }
+                    if (!GetUtils.isEmail(value)) {
+                      return 'Please enter a valid email';
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Enter your registered email',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    prefixIcon: Icon(Icons.email_outlined, color: Colors.grey[600]),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.red, width: 1),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: newPasswordController,
+                  obscureText: !isNewPasswordVisible.value,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'New password is required';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Enter new password',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    prefixIcon: Icon(Icons.lock_outline, color: Colors.grey[600]),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isNewPasswordVisible.value
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                        color: Colors.grey[600],
+                      ),
+                      onPressed: () {
+                        isNewPasswordVisible.value = !isNewPasswordVisible.value;
+                      },
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[50],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 2),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.red, width: 1),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (forgotPasswordController.isLoading.value)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+                    ),
+                  ),
+                if (forgotPasswordController.errorMessage.value.isNotEmpty)
+                  _buildMessageBox(
+                      forgotPasswordController.errorMessage.value, Colors.red),
+                if (forgotPasswordController.successMessage.value.isNotEmpty)
+                  _buildMessageBox(
+                      forgotPasswordController.successMessage.value, Colors.green),
+              ],
+            )),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            forgotPasswordController.clearMessages();
+            Get.back();
+          },
+          child: Text(
+            'Cancel',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          elevation: 0,
         ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
+        Obx(() => ElevatedButton(
+              onPressed: forgotPasswordController.isLoading.value
+                  ? null
+                  : () => _handleDirectPasswordReset(
+                      formKey,
+                      emailController,
+                      newPasswordController,
+                      forgotPasswordController,
+                    ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              )
-            : const Text(
-                'Sign In',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               ),
+              child: forgotPasswordController.isLoading.value
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'Reset Password',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+            )),
+      ],
+      barrierDismissible: false,
+      radius: 12,
+    );
+  }
+
+  Widget _buildMessageBox(String message, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              color == Colors.red ? Icons.error_outline : Icons.check_circle_outline,
+              color: color,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(color: color, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _handleDirectPasswordReset(
+      GlobalKey<FormState> formKey,
+      TextEditingController emailController,
+      TextEditingController newPasswordController,
+      ForgotPasswordController forgotPasswordController) async {
+    if (!formKey.currentState!.validate()) return;
+
+    try {
+      final success = await forgotPasswordController.resetPasswordDirect(
+        email: emailController.text.trim(),
+        newPassword: newPasswordController.text,
+      );
+
+      if (success) {
+        await Future.delayed(const Duration(seconds: 2));
+        forgotPasswordController.clearMessages();
+        Get.back();
+        Get.snackbar(
+          'Success',
+          'Password reset successfully! You can now log in with your new password.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 4),
+          margin: const EdgeInsets.all(16),
+          borderRadius: 8,
+          icon: const Icon(Icons.check_circle, color: Colors.white),
+        );
+      }
+    } catch (e) {
+      print('Direct password reset error: $e');
+    }
+  }
+
+
+  // -------------------- LOGIN BUTTON --------------------
+  Widget _buildLoginButton() {
+    return Obx(() => SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton(
+            onPressed: _isLoading.value ? null : _login,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: _isLoading.value
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+          ),
+        ));
   }
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    _isLoading.value = true;
 
     try {
       final authController = Get.find<AuthController>();
@@ -323,45 +554,31 @@ class _LoginViewState extends State<LoginView> {
         _passwordController.text,
       );
 
-      if (mounted) {
-        if (success) {
-          Get.snackbar(
-            'Success',
-            'Login successful! Welcome back ${authController.currentUser.value?.name}',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-          );
+      if (!mounted) return;
 
-          final role = authController.currentUser.value?.role ?? '';
-          final route = _getDashboardRouteForRole(role);
-          Get.offAllNamed(route);
-        } else {
-          Get.snackbar(
-            'Error',
-            'Invalid credentials. Please try again.',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
+      if (success) {
+        final role = authController.currentUser.value?.role ?? '';
+        final route = _getDashboardRouteForRole(role);
+        Get.offAllNamed(route);
+      } else {
         Get.snackbar(
           'Error',
-          'Login failed. Please try again.',
+          'Invalid credentials. Please try again.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
       }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Login failed. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      _isLoading.value = false;
     }
   }
 
@@ -380,21 +597,16 @@ class _LoginViewState extends State<LoginView> {
     }
   }
 
+  // -------------------- SOCIAL LOGIN --------------------
   Widget _buildSocialLogin() {
     return Column(
       children: [
         Row(
           children: [
             Expanded(child: Divider(color: Colors.grey[300])),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'OR',
-                style: TextStyle(
-                  color: Colors.grey[500],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text('OR', style: TextStyle(color: Colors.grey)),
             ),
             Expanded(child: Divider(color: Colors.grey[300])),
           ],

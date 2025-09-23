@@ -59,16 +59,7 @@ class ApiService {
     throw Exception('Failed to fetch activities: ${response.statusCode}');
   }
 
-  static Map<String, String> _headers(String token) {
-    return {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
-  }
-
-
-
-static Future<List<dynamic>> fetchNotifications(String token) async {
+  static Future<List<dynamic>> fetchNotifications(String token) async {
     final response = await http.get(
       Uri.parse('$baseUrl/notifications'),
       headers: _headers(token),
@@ -79,14 +70,56 @@ static Future<List<dynamic>> fetchNotifications(String token) async {
     throw Exception('Failed to fetch notifications: ${response.statusCode}');
   }
 
- static Future<Map<String, dynamic>> fetchForecast(String token) async {
-  final response = await http.get(
-    Uri.parse('$baseUrl/manager/forecast'),
-    headers: _headers(token),
-  );
+  static Future<Map<String, dynamic>> fetchForecast(String token) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/manager/forecast'),
+      headers: _headers(token),
+    );
 
-  if (response.statusCode == 200) return json.decode(response.body);
-  if (response.statusCode == 401) throw Exception('User not authenticated');
-  throw Exception('Failed to fetch forecast: ${response.statusCode}');
-}
+    if (response.statusCode == 200) return json.decode(response.body);
+    if (response.statusCode == 401) throw Exception('User not authenticated');
+    throw Exception('Failed to fetch forecast: ${response.statusCode}');
+  }
+
+  /// Reset password directly without email verification
+  static Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/reset-password'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'email': email,
+        'newPassword': newPassword,
+      }),
+    );
+
+    final responseBody = json.decode(response.body);
+
+    if (response.statusCode == 200) {
+      return responseBody;
+    }
+    
+    // Handle specific error cases
+    if (response.statusCode == 404) {
+      throw Exception('No account found with this email address');
+    }
+    
+    if (response.statusCode == 400) {
+      throw Exception(responseBody['message'] ?? 'Invalid password requirements');
+    }
+    
+    throw Exception('Failed to reset password: ${response.statusCode}');
+  }
+
+  static Map<String, String> _headers(String token) {
+    return {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    };
+  }
 }

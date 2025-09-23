@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../routes/app_routes.dart';
 import 'auth_controller.dart';
 
@@ -17,6 +19,9 @@ class LoginController extends GetxController {
   // Track if controller is disposed
   bool _isDisposed = false;
 
+  // Hive box for storing login info offline
+  late Box loginBox;
+
   @override
   void onInit() {
     super.onInit();
@@ -25,6 +30,18 @@ class LoginController extends GetxController {
     passwordController = TextEditingController();
     formKey = GlobalKey<FormState>();
     _isDisposed = false;
+
+    // Initialize Hive box
+    _initHive();
+  }
+
+  Future<void> _initHive() async {
+    await Hive.initFlutter();
+    loginBox = await Hive.openBox('loginBox');
+
+    // Load saved email and password if exists
+    emailController.text = loginBox.get('email', defaultValue: '');
+    passwordController.text = loginBox.get('password', defaultValue: '');
   }
 
   @override
@@ -60,6 +77,10 @@ class LoginController extends GetxController {
       if (_isDisposed) return; // Check if disposed during async operation
 
       if (success) {
+        // Save login info offline
+        await loginBox.put('email', emailController.text.trim());
+        await loginBox.put('password', passwordController.text);
+
         Get.snackbar(
           'Success',
           'Login successful! Welcome back ${authController.currentUser.value?.name}',

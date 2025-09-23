@@ -1,170 +1,182 @@
-import 'package:babi_industries/controllers/auth_controller.dart';
+import 'package:babi_industries/views/warehouse/components/warehouse_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:babi_industries/controllers/warehouse_controller.dart';
+import 'package:babi_industries/theme/warehouse_colors.dart';
+import 'package:babi_industries/utils/responsive_utils.dart';
+import 'package:babi_industries/views/warehouse/components/bottom_navigation.dart';
+import 'package:babi_industries/views/warehouse/components/desktop_sidebar.dart';
+import 'package:babi_industries/views/warehouse/components/floating_action_button.dart';
+import 'package:babi_industries/views/warehouse/components/kpi_grid.dart';
+import 'package:babi_industries/views/warehouse/components/low_stock_alerts.dart';
+import 'package:babi_industries/views/warehouse/components/mobile_drawer.dart';
+import 'package:babi_industries/views/warehouse/components/performance_metrics.dart';
+import 'package:babi_industries/views/warehouse/components/quick_actions.dart';
+import 'package:babi_industries/views/warehouse/components/recent_movements.dart';
+import 'package:babi_industries/views/warehouse/components/welcome_header.dart';
 
 class WarehouseDashboardView extends StatelessWidget {
   const WarehouseDashboardView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-    final bool isLargeScreen = size.width > 600;
-
+    final WarehouseController controller = Get.put(WarehouseController());
+    
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6FA),
-      appBar: AppBar(
-        title: const Text(
-          'Warehouse Dashboard',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+      backgroundColor: WarehouseColors.backgroundColor,
+      appBar: WarehouseAppBar(controller: controller),
+      drawer: ResponsiveUtils.isMobile(context) 
+          ? MobileDrawer(controller: controller)
+          : null,
+      body: _buildBody(context, controller),
+      bottomNavigationBar: _buildBottomNavigation(context, controller),
+      floatingActionButton: WarehouseFAB(controller: controller),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, WarehouseController controller) {
+    return Row(
+      children: [
+        if (ResponsiveUtils.isDesktop(context)) 
+          DesktopSidebar(controller: controller),
+        Expanded(
+          child: Obx(() => _buildContent(context, controller)),
         ),
-        backgroundColor: Colors.teal.shade700,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, color: Colors.grey.shade800),
-          ),
-          const SizedBox(width: 12),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, WarehouseController controller) {
+    if (controller.isLoading.value) {
+      return _buildLoadingState();
+    }
+
+    if (controller.errorMessage.value.isNotEmpty) {
+      return _buildErrorState(controller);
+    }
+
+    return _buildMainContent(context, controller);
+  }
+
+  Widget _buildLoadingState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(color: WarehouseColors.primaryColor),
+          SizedBox(height: 16),
+          Text('Loading warehouse data...'),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+    );
+  }
+
+  Widget _buildErrorState(WarehouseController controller) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            /// Greeting
+            Icon(Icons.error_outline, size: 64, color: Colors.red.shade400),
+            const SizedBox(height: 16),
             Text(
-              "Welcome, ${Get.find<AuthController>().currentUser.value?.name ?? 'Warehouse Manager'}",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              controller.errorMessage.value,
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-
-            /// KPI Section
-            const Text(
-              "Inventory Overview",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ElevatedButton.icon(
+              onPressed: controller.refreshData,
+              icon: const Icon(Icons.refresh),
+              label: const Text("Retry"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: WarehouseColors.primaryColor,
+              ),
             ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: isLargeScreen ? 4 : 2,
-              shrinkWrap: true,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.1,
-              children: [
-                _buildKpiCard(Icons.inventory_2, "Total Items", "2,340", Colors.teal),
-                _buildKpiCard(Icons.warning, "Low Stock", "14", Colors.orange),
-                _buildKpiCard(Icons.local_shipping, "Incoming", "7", Colors.blue),
-                _buildKpiCard(Icons.outbox, "Outgoing", "12", Colors.red),
-              ],
-            ),
-            const SizedBox(height: 28),
-
-            /// Low Stock Alerts
-            const Text(
-              "Low Stock Alerts",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _buildStockTile("Product A", "Only 5 left in stock!", Colors.orange),
-            _buildStockTile("Product B", "Critical: Only 2 left!", Colors.red),
-            _buildStockTile("Product C", "Low: 8 remaining", Colors.orange),
-            const SizedBox(height: 28),
-
-            /// Recent Stock Movements
-            const Text(
-              "Recent Stock Movements",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            _buildMovementTile("Shipment #123", "Received • 50 Units", Colors.green),
-            _buildMovementTile("Shipment #119", "Dispatched • 30 Units", Colors.red),
-            _buildMovementTile("Adjustment", "Added • 10 Units (Inventory Correction)", Colors.blue),
           ],
         ),
       ),
+    );
+  }
 
-      /// Bottom Navigation
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
-        selectedItemColor: Colors.teal.shade700,
-        unselectedItemColor: Colors.grey.shade600,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {},
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: "Dashboard"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_outlined), label: "Inventory"),
-          BottomNavigationBarItem(icon: Icon(Icons.swap_horiz_outlined), label: "Movements"),
-          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: "Reports"),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: "Settings"),
+  Widget _buildMainContent(BuildContext context, WarehouseController controller) {
+    final bool isMobile = ResponsiveUtils.isMobile(context);
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          WelcomeHeader(controller: controller),
+          const SizedBox(height: 24),
+          KpiGrid(
+            controller: controller,
+            isLargeScreen: ResponsiveUtils.isLargeScreen(context),
+            isTablet: ResponsiveUtils.isTablet(context),
+          ),
+          const SizedBox(height: 32),
+          _buildContentSection(context, controller),
         ],
       ),
     );
   }
 
-  /// KPI Card Widget
-  static Widget _buildKpiCard(IconData icon, String title, String value, Color color) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 28),
-            ),
-            const SizedBox(height: 14),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-          ],
+  Widget _buildContentSection(BuildContext context, WarehouseController controller) {
+    if (ResponsiveUtils.isMobile(context)) {
+      return _buildMobileContent(controller);
+    } else {
+      return _buildTabletDesktopContent(controller);
+    }
+  }
+
+  Widget _buildMobileContent(WarehouseController controller) {
+    return Column(
+      children: [
+        QuickActions(controller: controller),
+        const SizedBox(height: 24),
+        RecentMovements(controller: controller),
+        const SizedBox(height: 24),
+        LowStockAlerts(controller: controller),
+        const SizedBox(height: 24),
+        PerformanceMetrics(controller: controller),
+      ],
+    );
+  }
+
+  Widget _buildTabletDesktopContent(WarehouseController controller) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 2,
+          child: Column(
+            children: [
+              QuickActions(controller: controller),
+              const SizedBox(height: 24),
+              RecentMovements(controller: controller),
+            ],
+          ),
         ),
-      ),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 1,
+          child: Column(
+            children: [
+              LowStockAlerts(controller: controller),
+              const SizedBox(height: 24),
+              PerformanceMetrics(controller: controller),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  /// Low Stock Tile
-  static Widget _buildStockTile(String productName, String message, Color color) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        leading: Icon(Icons.warning, color: color, size: 28),
-        title: Text(productName, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(message, style: TextStyle(color: Colors.grey.shade600)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      ),
-    );
-  }
-
-  /// Recent Movement Tile
-  static Widget _buildMovementTile(String title, String details, Color color) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        leading: Icon(Icons.swap_vert, color: color, size: 28),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(details, style: TextStyle(color: Colors.grey.shade600)),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      ),
-    );
+  Widget? _buildBottomNavigation(BuildContext context, WarehouseController controller) {
+    if (ResponsiveUtils.isMobile(context) || ResponsiveUtils.isTablet(context)) {
+      return BottomNavigation(controller: controller);
+    }
+    return null;
   }
 }

@@ -4,7 +4,7 @@ import 'app_routes.dart';
 import '../views/auth/login_view.dart';
 import '../views/auth/register_view.dart';
 import '../views/dashboard/manager_dashboard_view.dart';
-import '../views/dashboard/buyer_dashboard_view.dart';
+import '../views/buyer_dashboard/buyer_dashboard_view.dart';
 import '../views/dashboard/warehouse_dashboard_view.dart';
 import '../views/dashboard/logistics_dashboard_view.dart';
 import '../bindings/auth_binding.dart';
@@ -16,7 +16,7 @@ class AppPages {
     // Auth routes - LoginView now doesn't need LoginController binding
     GetPage(
       name: AppRoutes.LOGIN,
-      page: () => const LoginView(),
+      page: () => LoginView(),
       binding: BindingsBuilder(() {
         // Only bind AuthController, not LoginController
         Get.put<AuthController>(AuthController(), permanent: true);
